@@ -38,7 +38,7 @@ OWAClient._load_cookies = _patched_load_cookies
 
 from exchange_mcp.server import mcp
 
-mcp.settings.host = "127.0.0.1"
+mcp.settings.host = "0.0.0.0"
 mcp.settings.port = 8765
 
 try:
