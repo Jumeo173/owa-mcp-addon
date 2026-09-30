@@ -1,0 +1,23 @@
+name: "CloudPub Tunnel"
+version: "0.1.0"
+slug: "cloudpub"
+description: "CloudPub tunnel for OWA Exchange MCP"
+url: "https://github.com/Jumeo173/owa-mcp-addon"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+startup: application
+boot: auto
+init: false
+host_network: false
+options:
+  target: "172.30.32.1:8765"
+  protocol: "http"
+schema:
+  target: "str"
+  protocol: "list(http|https|tcp|udp)"
+map:
+  - "addon_config:rw"
+panel_icon: "mdi:tunnel"
+panel_title: "CloudPub"
