@@ -3,6 +3,10 @@ import os
 
 MASTER_PASSWORD = os.environ.get("EXCHANGE_MASTER_PASSWORD")
 
+import sys
+print(f"[startup] MASTER_PASSWORD set: {bool(MASTER_PASSWORD)}", file=sys.stderr, flush=True)
+print(f"[startup] EXCHANGE keys: {[k for k in os.environ if 'EXCHANGE' in k]}", file=sys.stderr, flush=True)
+
 from exchange_mcp.owa_client import OWAClient
 
 _original_load_cookies = OWAClient._load_cookies
