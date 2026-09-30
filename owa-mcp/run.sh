@@ -11,7 +11,6 @@ ENV_FILE="${ADDON_CONFIG}/${ENV_FILE_NAME}"
 
 if [ ! -f "${ENV_FILE}" ]; then
     bashio::log.fatal "Env file not found: ${ENV_FILE}"
-    bashio::log.fatal "Положи owa-mcp.env в addon_configs/<slug>_owa-mcp/"
     exit 1
 fi
 
@@ -31,6 +30,14 @@ if [ -f "${SALT_SRC}" ]; then
     bashio::log.info "Salt copied."
 else
     bashio::log.warning ".salt не найден в ${ADDON_CONFIG}/"
+fi
+
+CREDS_SRC="${ADDON_CONFIG}/.credentials.enc"
+if [ -f "${CREDS_SRC}" ]; then
+    cp "${CREDS_SRC}" /app/owa-exchange-mcp/.credentials.enc
+    bashio::log.info "Credentials copied."
+else
+    bashio::log.warning ".credentials.enc не найден в ${ADDON_CONFIG}/"
 fi
 
 cd /app/owa-exchange-mcp
