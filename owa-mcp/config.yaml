@@ -1,0 +1,28 @@
+name: "OWA Exchange MCP"
+version: "0.1.0"
+slug: "owa-mcp"
+description: "Digital Secretary for Exchange via MCP (SSE)"
+url: "https://github.com/Jumeo173/owa-mcp-addon"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+startup: application
+boot: auto
+init: false
+host_network: false
+ports:
+  "8765/tcp": 8765
+ports_description:
+  "8765/tcp": "MCP SSE endpoint"
+options:
+  env_file: "owa-mcp.env"
+  log_level: "info"
+schema:
+  env_file: "str"
+  log_level: "list(trace|debug|info|notice|warning|error|fatal)"
+map:
+  - "addon_config:rw"
+  - "share:rw"
+panel_icon: "mdi:calendar-clock"
+panel_title: "OWA MCP"
