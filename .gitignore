@@ -10,3 +10,4 @@ logs/
 session-cookies.txt
 CLAUDE.md
 .mcp.json.example
+*.bak
