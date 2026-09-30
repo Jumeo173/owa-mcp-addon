@@ -11,7 +11,7 @@ ENV_FILE="${ADDON_CONFIG}/${ENV_FILE_NAME}"
 
 if [ ! -f "${ENV_FILE}" ]; then
     bashio::log.fatal "Env file not found: ${ENV_FILE}"
-    bashio::log.fatal "Положи owa-mcp.env в папку addon_configs/<slug>_owa-mcp/"
+    bashio::log.fatal "Положи owa-mcp.env в addon_configs/<slug>_owa-mcp/"
     exit 1
 fi
 
@@ -23,6 +23,14 @@ if [ -f "${COOKIES_SRC}" ]; then
     bashio::log.info "Cookies copied."
 else
     bashio::log.warning "session-cookies.txt не найден в ${ADDON_CONFIG}/"
+fi
+
+SALT_SRC="${ADDON_CONFIG}/.salt"
+if [ -f "${SALT_SRC}" ]; then
+    cp "${SALT_SRC}" /app/owa-exchange-mcp/.salt
+    bashio::log.info "Salt copied."
+else
+    bashio::log.warning ".salt не найден в ${ADDON_CONFIG}/"
 fi
 
 cd /app/owa-exchange-mcp

@@ -1,5 +1,5 @@
 name: "OWA Exchange MCP"
-version: "0.1.6"
+version: "0.1.7"
 slug: "owa-mcp"
 description: "Digital Secretary for Exchange via MCP (SSE)"
 url: "https://github.com/Jumeo173/owa-mcp-addon"
