@@ -200,22 +200,56 @@ Advanced SSH & Web Terminal не запускается. Мы его НЕ исп
 - Авто-пересоздание .credentials.enc из env
 - Авто-логин при протухании cookies
 
-### Приоритет 1 — Работа с почтой
+### Приоритет 1 — Работа с почтой (ЗАКРЫТО в v1.1.0)
+
+Все 4 сценария работают без правок кода.
+
 Сценарии:
-1. Непрочитанные письма за период (текущие + месяц назад)
-2. Связь с календарём — письма, связанные со встречами
-3. Встреча из письма — создать событие из тела
-4. Дайджест от адресата — обработка содержимого, дайджест/протокол
+1. Непрочитанные письма за период — get_emails(unread_only=True)
+2. Связь с календарём — агент матчит по email участников
+3. Встреча из письма — get_email(item_id) + LLM-парсинг тела
+4. Дайджест от адресата — get_emails + get_email пачкой
 
-Ограничения:
-- Отправка писем НЕ делаем
-- Вложения — скачивать, парсить, показывать содержимое
+Tool-ы (в апстриме email.py, регистрируются автоматически через
+server.py:49):
+- get_emails(folder, limit, offset, include_body, unread_only, ids_only)
+- get_email(item_id)
+- get_email_links(item_id)
+- download_attachments(item_id, target_folder) — пока не используем
+- get_folders / check_session (folders.py)
+- send_email / reply_email / forward_email — ЗАПРЕЩЕНЫ в инструкции
+- mark_email_read / move_email / delete_email — не отмечены в AI Studio
 
-Задачи:
-- Разведка: какие tool-ы регистрирует email.py в MCP
-- Проверить видимость агенту в AI Studio
-- Инструкция агенту
-- Связка email.py + calendar.py для "встреча из письма"
+В AI Studio (коннектор exchange-calendar) отмечены:
+get_emails, get_email, get_email_links, get_folders.
+
+Архитектурное решение:
+email.py НЕ патчим. Заявленные дыры (since/until/from_filter/
+conversation_id/internet_message_id) закрываются LLM-фильтрацией
+на стороне агента. Restriction в OWA JSON API хрупкий. LLM-фильтрация
+надёжнее и работает.
+
+Правило проекта:
+> Тяжёлую логику фильтрации/матчинга несёт LLM. MCP-сервер
+> отдаёт сырые данные как есть. Патчим Python только там, где
+> LLM принципиально не справится (массовые операции, recurrence,
+> парсинг бинарных вложений).
+
+Инструкция агента «Секретарь» в AI Studio расширена:
+- блок ВОЗМОЖНОСТИ — ПОЧТА
+- блок ПРАВИЛА — ПОЧТА (запреты send/reply/forward/delete/move,
+  mark_email_read только по явной просьбе)
+- блок СВЯЗЬ ПОЧТА ↔ КАЛЕНДАРЬ (сценарии 2 и 3)
+- формат ответа для писем и дайджеста
+
+Известный технический долг (отложено):
+- health-route / → 200 в run_http.py: FastMCP.run(transport="sse")
+  не даёт API для доп. маршрутов. Сейчас CloudPub живёт с GET / 404 —
+  не критично.
+- download_attachments пишет в /tmp контейнера — путь агенту
+  бесполезен, нужен tool с base64/text содержимым.
+- флаги OWA_DISABLE_SEND для send/reply/forward (сейчас только
+  запрет в инструкции).
 
 ### Приоритет 2 — Удаление событий календаря
 В апстриме НЕТ удаления. Добавить delete_calendar_event со scope:
