@@ -1,13 +1,14 @@
-FROM ghcr.io/home-assistant/aarch64-base:latest
+FROM ghcr.io/home-assistant/aarch64-base-debian:latest
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
-        py3-pip \
-        py3-virtualenv \
+        python3-pip \
+        python3-venv \
         bash \
         curl \
         git \
-        jq
+        jq \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
