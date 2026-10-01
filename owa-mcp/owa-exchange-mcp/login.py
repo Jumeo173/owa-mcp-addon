@@ -61,17 +61,33 @@ def decrypt_credentials(master_password: str) -> tuple:
         return None, None
 
 def setup_credentials():
-    """Interactive setup of credentials"""
-    print("=== Exchange Mail Setup ===")
-    username = input("Enter your email: ").strip()
-    password = getpass.getpass("Enter your password: ")
-    master = getpass.getpass("Create a master password to encrypt credentials: ")
-    master2 = getpass.getpass("Confirm master password: ")
-    
+    """Interactive setup of credentials (or from env if available)"""
+    env_email = os.environ.get("EXCHANGE_EMAIL")
+    env_password = os.environ.get("EXCHANGE_PASSWORD")
+    env_master = os.environ.get("EXCHANGE_MASTER_PASSWORD")
+
+    if env_email and env_password and env_master:
+        print("=== Exchange Mail Setup (from env) ===", flush=True)
+        print(f"  email: {env_email}", flush=True)
+        print("  password: <from env>", flush=True)
+        print("  master: <from env>", flush=True)
+        encrypt_credentials(env_email, env_password, env_master)
+        return True
+
+    print("=== Exchange Mail Setup (interactive) ===", flush=True)
+    try:
+        username = input("Enter your email: ").strip()
+        password = getpass.getpass("Enter your password: ")
+        master = getpass.getpass("Create a master password to encrypt credentials: ")
+        master2 = getpass.getpass("Confirm master password: ")
+    except EOFError:
+        print("ERROR: no interactive terminal and env vars not set", flush=True)
+        return False
+
     if master != master2:
         print("Passwords don't match!")
         return False
-    
+
     encrypt_credentials(username, password, master)
     return True
 
