@@ -7,9 +7,7 @@ RUN apk add --no-cache \
         bash \
         curl \
         git \
-        jq \
-        xvfb \
-        ttf-freefont
+        jq
 
 WORKDIR /app
 

@@ -87,8 +87,10 @@ def login(username: str, password: str, master_password: str = None):
 
     print(f"Logging in as {username}...", flush=True)
 
+    browserless_ws = os.environ.get("BROWSERLESS_WS", "ws://db21ed7f_browserless-chrome:3000")
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.connect_over_cdp(browserless_ws)
         context = browser.new_context()
         page = context.new_page()
 
@@ -199,7 +201,9 @@ def main():
         print("No credentials found. Run with --setup first.")
         sys.exit(1)
     
-    master = getpass.getpass("Master password: ")
+    master = os.environ.get("EXCHANGE_MASTER_PASSWORD")
+    if not master:
+        master = getpass.getpass("Master password: ")
     username, password = decrypt_credentials(master)
     if not username:
         sys.exit(1)
