@@ -1,5 +1,5 @@
 name: "OWA Exchange MCP"
-version: "0.5.0"
+version: "0.5.1"
 slug: "owa-mcp"
 description: "Digital Secretary for Exchange via MCP (SSE)"
 url: "https://github.com/Jumeo173/owa-mcp-addon"
@@ -16,10 +16,18 @@ ports:
 ports_description:
   "8765/tcp": "MCP SSE endpoint"
 options:
-  env_file: "owa-mcp.env"
+  exchange_owa_url: "https://mail.lvlmed.ru"
+  exchange_master_password: ""
+  exchange_email: ""
+  exchange_password: ""
+  browserless_ws: "ws://db21ed7f_browserless-chrome:3000"
   log_level: "info"
 schema:
-  env_file: "str"
+  exchange_owa_url: "str"
+  exchange_master_password: "password"
+  exchange_email: "email"
+  exchange_password: "password"
+  browserless_ws: "str"
   log_level: "list(trace|debug|info|notice|warning|error|fatal)"
 map:
   - "addon_config:rw"
