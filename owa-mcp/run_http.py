@@ -61,6 +61,36 @@ def _patched_load_cookies(self):
 OWAClient._load_cookies = _patched_load_cookies
 log("OWAClient._load_cookies patched")
 
+# ------------------------------------------------------------------
+# Fix: tools/auth.py (line 147) imports decrypt_credentials/decrypt_cookie_file
+# *inside* the tool function and calls them with the `master_password`
+# argument supplied by the LLM (usually None/empty) -> "Invalid master password".
+# Force env MASTER_PASSWORD for all decrypt_* calls. Because the import in
+# tools/auth.py is function-local, patching the module attribute is enough —
+# no need to touch consumer modules.
+# ------------------------------------------------------------------
+import exchange_mcp.auth as _auth
+
+if MASTER_PASSWORD:
+    _orig_decrypt_creds = _auth.decrypt_credentials
+
+    def _patched_decrypt_creds(_master_password=None):
+        return _orig_decrypt_creds(MASTER_PASSWORD)
+
+    _auth.decrypt_credentials = _patched_decrypt_creds
+
+    _orig_decrypt_cookie = _auth.decrypt_cookie_file
+
+    def _patched_decrypt_cookie(_master_password=None, cookie_file=None):
+        return _orig_decrypt_cookie(MASTER_PASSWORD, cookie_file)
+
+    _auth.decrypt_cookie_file = _patched_decrypt_cookie
+
+    log("exchange_mcp.auth.decrypt_* patched: force MASTER_PASSWORD from env")
+else:
+    log("WARNING: MASTER_PASSWORD empty — exchange_mcp.auth.decrypt_* NOT patched")
+
+
 
 from exchange_mcp.server import mcp
 

@@ -315,3 +315,20 @@ File editor -> /app_configs/225c5dff_owa-mcp/ -> удалить все .old.
 ## Контакты
 
 Jumeo — github.com/Jumeo173
+
+### tools/auth.py нельзя давать агенту в AI Studio
+В `exchange_mcp/tools/auth.py` есть tool `login`, принимающий
+`master_password` как аргумент tool-вызова. Агент не знает мастер-пароль
+(он в UI аддона) и передаёт None/пустую строку → `decrypt_credentials`
+падает → агент видит `Invalid master password — could not decrypt
+credentials` и пересказывает как «сессия истекла, нужен мастер-пароль».
+
+Фикс двойной:
+1. В AI Studio, в коннекторе exchange-calendar, снять галочки со всех
+   tools из `exchange_mcp/tools/auth.py` (`login` и т.п.). Сессия всё
+   равно восстанавливается автоматически: `_patched_load_cookies` в
+   run_http.py + `run.sh` с login.py через browserless.
+2. В run_http.py пропатчены `exchange_mcp.auth.decrypt_credentials` и
+   `decrypt_cookie_file` — форсируют `MASTER_PASSWORD` из env, игнорируя
+   аргумент. Импорт в tools/auth.py — function-local (строка 147),
+   поэтому патч модуля подхватывается без правок потребителей.
