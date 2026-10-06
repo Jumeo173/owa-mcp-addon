@@ -199,6 +199,11 @@ Advanced SSH & Web Terminal не запускается. Мы его НЕ исп
 - Секреты в UI аддона (/data/options.json)
 - Авто-пересоздание .credentials.enc из env
 - Авто-логин при протухании cookies
+- Форсирование MASTER_PASSWORD для decrypt_* (v1.1.1)
+- Отключены tools/auth.py в AI Studio (агент не дёргает login-tool)
+- check_secrets.py в образе + реальные decrypt_* (v1.1.3)
+- venv в образе, старт ~2s вместо ~90s (v2.0.0)
+- Legacy-мусор из /config вычищен (v2.0.0)
 
 ### Приоритет 1 — Работа с почтой (ЗАКРЫТО в v1.1.0)
 
