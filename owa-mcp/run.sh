@@ -60,6 +60,25 @@ if [ ! -d ".venv" ]; then
     .venv/bin/pip install --no-cache-dir playwright
 fi
 
+# === DIAGNOSTIC BLOCK (v1.1.2) ===
+bashio::log.warning "=== DIAG START ==="
+bashio::log.warning "md5 /data/.salt:        $(md5sum /data/.salt 2>&1)"
+bashio::log.warning "md5 /data/.credentials: $(md5sum /data/.credentials.enc 2>&1)"
+bashio::log.warning "md5 /app/.salt:         $(md5sum /app/owa-exchange-mcp/.salt 2>&1)"
+bashio::log.warning "md5 /app/.credentials:  $(md5sum /app/owa-exchange-mcp/.credentials.enc 2>&1)"
+bashio::log.warning "md5 /data/cookies:      $(md5sum /data/session-cookies.txt 2>&1)"
+bashio::log.warning "md5 /app/cookies:       $(md5sum /app/owa-exchange-mcp/session-cookies.txt 2>&1)"
+
+bashio::log.warning "--- check_secrets.py creds (full output) ---"
+.venv/bin/python /app/owa-exchange-mcp/check_secrets.py creds 2>&1 || true
+bashio::log.warning "creds exit code: $?"
+
+bashio::log.warning "--- check_secrets.py cookies (full output) ---"
+.venv/bin/python /app/owa-exchange-mcp/check_secrets.py cookies 2>&1 || true
+bashio::log.warning "cookies exit code: $?"
+bashio::log.warning "=== DIAG END ==="
+# === END DIAGNOSTIC BLOCK ===
+
 NEED_SETUP=0
 if [ ! -f "${CREDS_SRC}" ] || [ ! -f "${SALT_SRC}" ]; then
     NEED_SETUP=1
