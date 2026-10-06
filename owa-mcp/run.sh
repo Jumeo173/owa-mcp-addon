@@ -1,7 +1,7 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-bashio::log.info "Starting OWA Exchange MCP add-on (v0.4.1)..."
+bashio::log.info "Starting OWA Exchange MCP add-on..."
 
 DATA_DIR="/data"
 LEGACY_CONFIG="/config"
@@ -54,7 +54,7 @@ if [ -f "${CREDS_SRC}" ]; then cp "${CREDS_SRC}" /app/owa-exchange-mcp/.credenti
 
 cd /app/owa-exchange-mcp
 if [ ! -d ".venv" ]; then
-    bashio::log.info "Creating venv..."
+    bashio::log.warning "venv missing — recreating at runtime (should be baked into image!)"
     python3 -m venv .venv
     .venv/bin/pip install --no-cache-dir -e .
     .venv/bin/pip install --no-cache-dir playwright
@@ -109,21 +109,6 @@ if [ "${NEED_LOGIN}" = "1" ]; then
     else
         bashio::log.error "login.py failed"
     fi
-fi
-
-COOKIES_OK=0
-if [ -f "/app/owa-exchange-mcp/session-cookies.txt" ]; then
-    if .venv/bin/python /app/owa-exchange-mcp/check_secrets.py cookies 2>/dev/null; then
-        COOKIES_OK=1
-    fi
-fi
-
-if [ "${COOKIES_OK}" = "1" ] && [ -f "${MIGRATION_FLAG}" ]; then
-    [ -f "${LEGACY_CONFIG}/owa-mcp.env" ] && [ ! -f "${LEGACY_CONFIG}/owa-mcp.env.old" ] && mv "${LEGACY_CONFIG}/owa-mcp.env" "${LEGACY_CONFIG}/owa-mcp.env.old" && bashio::log.info "Legacy: owa-mcp.env -> .old"
-    [ -f "${LEGACY_CONFIG}/session-cookies.txt" ] && [ ! -f "${LEGACY_CONFIG}/session-cookies.txt.old" ] && mv "${LEGACY_CONFIG}/session-cookies.txt" "${LEGACY_CONFIG}/session-cookies.txt.old" && bashio::log.info "Legacy: cookies -> .old"
-    [ -f "${LEGACY_CONFIG}/.salt" ] && [ ! -f "${LEGACY_CONFIG}/.salt.old" ] && mv "${LEGACY_CONFIG}/.salt" "${LEGACY_CONFIG}/.salt.old" && bashio::log.info "Legacy: .salt -> .old"
-    [ -f "${LEGACY_CONFIG}/.credentials.enc" ] && [ ! -f "${LEGACY_CONFIG}/.credentials.enc.old" ] && mv "${LEGACY_CONFIG}/.credentials.enc" "${LEGACY_CONFIG}/.credentials.enc.old" && bashio::log.info "Legacy: .credentials.enc -> .old"
-    bashio::log.info "Legacy files renamed to .old"
 fi
 
 cd /app

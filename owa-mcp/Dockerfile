@@ -16,6 +16,10 @@ COPY owa-exchange-mcp /app/owa-exchange-mcp
 COPY run_http.py /app/run_http.py
 COPY run.sh /run.sh
 COPY check_secrets.py /app/owa-exchange-mcp/check_secrets.py
+
+# Bake venv + deps into the image so addon starts fast
+WORKDIR /app/owa-exchange-mcp
+RUN python3 -m venv .venv && .venv/bin/pip install --no-cache-dir -e . && .venv/bin/pip install --no-cache-dir playwright
 RUN chmod a+x /run.sh
 
 CMD [ "/run.sh" ]

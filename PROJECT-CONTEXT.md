@@ -316,6 +316,42 @@ File editor -> /app_configs/225c5dff_owa-mcp/ -> удалить все .old.
 
 Jumeo — github.com/Jumeo173
 
+### check_secrets.py должен попадать в образ (v1.1.3)
+`run.sh` вызывает `/app/owa-exchange-mcp/check_secrets.py` для проверки
+расшифровки credentials/cookies. Если файла нет в образе — python падает
+с exit 2, `run.sh` считает, что расшифровка не удалась, и **при каждом
+старте** запускает `login.py --setup`. Это ломает salt: cookies,
+зашифрованные старым salt, становятся нерасшифровываемыми. Цикл
+повторяется.
+
+**Симптом:** `WARNING: Credentials not decryptable, recreating` +
+`Running login.py --setup...` при **каждом** старте аддона.
+
+**Фикс:** `COPY check_secrets.py /app/owa-exchange-mcp/check_secrets.py`
+в `Dockerfile` (после `COPY run.sh`). Плюс `check_secrets.py` должен
+использовать **реальные** `decrypt_credentials`/`decrypt_cookie_file`
+из `login.py`/`exchange_mcp.auth`, а не дублировать PBKDF2 — иначе
+проверка разойдётся с реальной расшифровкой.
+
+### venv в образе, а не в run.sh (v2.0.0)
+Изначально `run.sh` при **каждом** старте создавал `.venv` и ставил
+`mcp`/`playwright` (~90 секунд). Это потому, что `.venv` создаётся в
+`/app/owa-exchange-mcp/.venv` — внутри контейнера, а `/app` не
+persistent.
+
+**Фикс:** `pip install` перенесён в `Dockerfile`:
+```
+WORKDIR /app/owa-exchange-mcp
+RUN python3 -m venv .venv && .venv/bin/pip install --no-cache-dir -e . && .venv/bin/pip install --no-cache-dir playwright
+```
+`run.sh` оставляет fallback (на случай если образ собран неправильно),
+но он **не должен** срабатывать. Старт сократился с ~90 секунд до ~2.
+
+### Legacy-миграция из /config завершена (v2.0.0)
+Блок `Legacy files renamed to .old` в `run.sh` удалён — миграция из
+`/config` в `/data` завершена, файлы переименованы. Меньше шума в
+логах.
+
 ### tools/auth.py нельзя давать агенту в AI Studio
 В `exchange_mcp/tools/auth.py` есть tool `login`, принимающий
 `master_password` как аргумент tool-вызова. Агент не знает мастер-пароль
