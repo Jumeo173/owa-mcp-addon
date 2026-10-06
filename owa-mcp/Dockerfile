@@ -15,6 +15,7 @@ WORKDIR /app
 COPY owa-exchange-mcp /app/owa-exchange-mcp
 COPY run_http.py /app/run_http.py
 COPY run.sh /run.sh
+COPY check_secrets.py /app/owa-exchange-mcp/check_secrets.py
 RUN chmod a+x /run.sh
 
 CMD [ "/run.sh" ]
