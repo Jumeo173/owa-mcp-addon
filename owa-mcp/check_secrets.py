@@ -39,3 +39,39 @@ if mode == "cookies":
         sys.exit(1)
 
 sys.exit(1)
+if mode == "session":
+    try:
+        from login import decrypt_cookie_file
+        from exchange_mcp.owa_client import OWAClient
+        cookie_file = Path("/app/owa-exchange-mcp/session-cookies.txt")
+        cookies_str = decrypt_cookie_file(mf, cookie_file)
+        if not cookies_str:
+            print("session: cannot decrypt cookies", file=sys.stderr)
+            sys.exit(1)
+        client = OWAClient()
+        client.load_cookies_from_string(cookies_str)
+        payload = {
+            "__type": "GetFolderJsonRequest:#Exchange",
+            "Header": {
+                "__type": "JsonRequestHeaders:#Exchange",
+                "RequestServerVersion": "Exchange2013",
+            },
+            "FolderShape": {
+                "__type": "FolderResponseShape:#Exchange",
+                "BaseShape": "IdOnly",
+            },
+            "Folders": [{
+                "__type": "TargetFolderId:#Exchange",
+                "BaseFolderId": {
+                    "__type": "DistinguishedFolderId:#Exchange",
+                    "Id": "inbox",
+                },
+            }],
+        }
+        client.request("GetFolder", payload, timeout=15)
+        sys.exit(0)
+    except Exception as e:
+        print(f"session check: {type(e).__name__}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+sys.exit(1)

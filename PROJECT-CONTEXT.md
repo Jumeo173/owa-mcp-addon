@@ -357,6 +357,26 @@ RUN python3 -m venv .venv && .venv/bin/pip install --no-cache-dir -e . && .venv/
 `/config` в `/data` завершена, файлы переименованы. Меньше шума в
 логах.
 
+### Реактивный и проактивный re-login на HTTP 440 (v2.1.0)
+Upstream `OWAClient.request` делает retry со **теми же** cookies из
+файла — это не помогает, если серверная сессия истекла. Cookies
+расшифровываются (мастер-пароль тот же), но **отвергаются** OWA
+с HTTP 440.
+
+**Два уровня:**
+1. **Проактивный** (`check_secrets.py session` + `run.sh`): при
+   старте аддона делаем лёгкий `GetFolder` к OWA. Если 440 — сразу
+   `login.py` через browserless, ещё до первого запроса агента.
+2. **Реактивный** (`run_http.py`): патч `OWAClient.request` — при
+   `SessionExpiredError` (после встроенных двух попыток) запускаем
+   `login.py`, форсим `_cookies_loaded=False`, `reload_cookies()`,
+   retry. Плюс `threading.Lock` + cooldown 60 сек, чтобы
+   параллельные SSE-сессии не логинились одновременно.
+
+**Скрытый баг v1.1.1**: `reload_cookies()` ставил `_loaded=False`,
+а наш патч `_load_cookies` смотрит на `_cookies_loaded` — перезагрузка
+фактически не происходила. В v2.1.0 при re-login сбрасываем оба флага.
+
 ### tools/auth.py нельзя давать агенту в AI Studio
 В `exchange_mcp/tools/auth.py` есть tool `login`, принимающий
 `master_password` как аргумент tool-вызова. Агент не знает мастер-пароль

@@ -62,6 +62,90 @@ OWAClient._load_cookies = _patched_load_cookies
 log("OWAClient._load_cookies patched")
 
 # ------------------------------------------------------------------
+# Reactive re-login on HTTP 440 (SessionExpiredError).
+# Upstream OWAClient.request retries once with the SAME cookies,
+# which doesn't help if the server-side session expired.
+# Hook: on SessionExpiredError -> run login.py via browserless
+# -> force-reload cookies from disk -> retry once.
+# ------------------------------------------------------------------
+import subprocess
+import threading
+import time
+import shutil
+from pathlib import Path as _Path
+
+from exchange_mcp.owa_client import SessionExpiredError
+
+_login_lock = threading.Lock()
+_last_login_ts = [0.0]
+_LOGIN_COOLDOWN = 60.0
+
+
+def _run_login() -> bool:
+    """Run login.py via browserless to refresh cookies. Serialized."""
+    with _login_lock:
+        now = time.time()
+        if now - _last_login_ts[0] < _LOGIN_COOLDOWN:
+            log(f"login cooldown ({now - _last_login_ts[0]:.0f}s < {_LOGIN_COOLDOWN}s), skip")
+            return False
+        log("Running login.py via browserless (reactive re-login)...")
+        try:
+            r = subprocess.run(
+                ["/app/owa-exchange-mcp/.venv/bin/python", "login.py"],
+                cwd="/app/owa-exchange-mcp",
+                capture_output=True,
+                text=True,
+                timeout=150,
+            )
+        except subprocess.TimeoutExpired:
+            log("login.py TIMEOUT (>150s)")
+            _last_login_ts[0] = time.time()
+            return False
+        _last_login_ts[0] = time.time()
+        if r.returncode != 0:
+            log(f"login.py exit={r.returncode}")
+            log(f"login.py stderr tail: {r.stderr[-500:]}")
+            return False
+        log("login.py OK — cookies refreshed")
+        for name in ("session-cookies.txt", ".salt", ".credentials.enc"):
+            src = _Path("/app/owa-exchange-mcp") / name
+            dst = _Path("/data") / name
+            if src.exists():
+                try:
+                    shutil.copy(src, dst)
+                except Exception as e:
+                    log(f"copy {name} -> /data failed: {e}")
+        return True
+
+
+_original_request = OWAClient.request
+
+
+def _patched_request(self, action, payload, *, timeout=30):
+    try:
+        return _original_request(self, action, payload, timeout=timeout)
+    except SessionExpiredError as e:
+        log(f"SessionExpiredError on action={action}: {e}")
+        if not _run_login():
+            log("re-login failed or skipped — re-raising")
+            raise
+        try:
+            self._cookies_loaded = False
+            self._loaded = False
+            self.reload_cookies()
+            log("cookies reloaded after login")
+        except Exception as reload_err:
+            log(f"reload_cookies after login failed: {reload_err}")
+            raise
+        log(f"retrying action={action} with fresh cookies...")
+        return _original_request(self, action, payload, timeout=timeout)
+
+
+OWAClient.request = _patched_request
+log("OWAClient.request patched: reactive re-login on 440")
+
+
+# ------------------------------------------------------------------
 # Fix: tools/auth.py (line 147) imports decrypt_credentials/decrypt_cookie_file
 # *inside* the tool function and calls them with the `master_password`
 # argument supplied by the LLM (usually None/empty) -> "Invalid master password".
