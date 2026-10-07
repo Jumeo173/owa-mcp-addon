@@ -189,6 +189,88 @@ Advanced SSH & Web Terminal не запускается. Мы его НЕ исп
 ### Chromium на ARM64 — тяжёлый и хрупкий
 Не ставим chromium в MCP-аддон. Используем внешний browserless_chrome.
 
+
+### Чек-лист tools в AI Studio (коннектор exchange-calendar)
+
+**Включить (агент должен их видеть):**
+- Почта (чтение): get_emails, get_email, get_email_links
+- Папки: get_folders
+- Календарь (чтение): get_calendar_events, get_event_links
+- Люди: find_person
+- Аналитика: find_free_time, find_meeting_time, get_meeting_stats, get_meeting_contacts
+
+**Выключить (по техническим причинам):**
+- login, check_session — из tools/auth.py. Агент НЕ знает мастер-пароль,
+  передаёт None → падает с «Invalid master password» → пересказывает как
+  «сессия истекла». Сессия восстанавливается автоматически (см. ниже).
+- mark_email_read — только по явной просьбе (в инструкции агента)
+- download_attachments, download_event_attachments — пишут в /tmp
+  контейнера, путь агенту бесполезен (технический долг, см. Roadmap)
+- send_email, reply_email, forward_email — ЗАПРЕЩЕНЫ инструкцией агента
+- move_email, delete_email, respond_to_meeting — по инструкции не нужны
+- create_meeting, update_meeting, cancel_meeting — на усмотрение
+  (если агент только читает — выключить)
+- create_folder, rename_folder, empty_folder, delete_folder,
+  move_folder — управление папками, агенту не нужно
+
+### Жизненный цикл OWA-сессии (v2.1.0)
+
+**Три независимых состояния**, которые нужно различать:
+
+| Состояние | Что значит | Как проверить | Стоимость |
+|---|---|---|---|
+| Файл cookies расшифровывается | мастер-пароль совпадает | check_secrets.py cookies | ~50 мс, локально |
+| Cookies+creds согласованы | salt+creds+cookies от одного --setup | check_secrets.py creds+cookies | ~100 мс, локально |
+| Cookies валидны на OWA | серверная сессия жива | check_secrets.py session | ~500 мс, по сети |
+
+**Раньше** проверялось только ПЕРВОЕ — cookies расшифровываются мастер-паролем.
+Но OWA-сессия на СЕРВЕРЕ живёт своей жизнью: она истекает (HTTP 440)
+НЕЗАВИСИМО от того, что файл cookies на диске ещё расшифровывается.
+
+Отсюда ДВА уровня защиты:
+
+**Уровень 1 — проактивный (run.sh + check_secrets.py session)**
+При СТАРТЕ аддона, после копирования cookies в /app/owa-exchange-mcp/,
+запускается check_secrets.py session — делает лёгкий GetFolder к OWA.
+Если 440 → login.py через browserless → свежие cookies.
+Симптом в логе:
+  [..] WARNING: OWA session expired (HTTP 440), running login.py
+  [..] INFO: Running login.py via browserless...
+
+**Уровень 2 — реактивный (run_http.py патч OWAClient.request)**
+Если сессия умрёт В СЕРЕДИНЕ ДНЯ (аддон не перезапускался, проактивный не
+сработал), при первом же SessionExpiredError:
+  [startup] SessionExpiredError on action=GetItem: ...
+  [startup] Running login.py via browserless (reactive re-login)...
+  [startup] login.py OK — cookies refreshed
+  [startup] retrying action=GetItem with fresh cookies...
+Плюс threading.Lock + cooldown 60 сек — параллельные SSE-сессии
+не запускают логин одновременно.
+
+**Скрытый баг v1.1.1**: reload_cookies() ставил _loaded=False, но наш
+патч _load_cookies смотрит на _cookies_loaded — перезагрузка фактически
+не происходила. В v2.1.0 при re-login сбрасываются ОБА флага.
+
+**Антипаттерны (НЕ делать):**
+- Проверять только расшифровку cookies — серверная сессия может быть
+  мертва, а cookies на диске всё ещё расшифровываются
+- Запускать login.py --setup при каждом старте — это ломает salt,
+  cookies становятся нерасшифровываемыми, получается цикл
+- Патчить OWAClient.request до OWAClient._load_cookies — порядок
+  в run_http.py важен: _load_cookies (v1.1.0) → request (v2.1.0)
+  → decrypt_* (v1.1.1) → from exchange_mcp.server import mcp
+
+**Диагностика в логе:**
+| Строка в логе | Что значит |
+|---|---|
+| _patched: decrypted OK | cookies расшифровались, мастер-пароль ок |
+| WARNING: OWA session expired (HTTP 440) | проактивный: сессия мертва на старте, запускается login |
+| OWAClient.request patched: reactive re-login on 440 | реактивный патч загружен |
+| SessionExpiredError on action=... | сессия умерла в рантайме, запускается реактивный re-login |
+| login cooldown (Ns < 60.0s), skip | параллельная сессия уже логинится, ждём |
+| Credentials not decryptable, recreating | БАГ — salt разошёлся, смотреть check_secrets.py |
+
+
 ## Roadmap
 
 ### Готово
@@ -204,6 +286,8 @@ Advanced SSH & Web Terminal не запускается. Мы его НЕ исп
 - check_secrets.py в образе + реальные decrypt_* (v1.1.3)
 - venv в образе, старт ~2s вместо ~90s (v2.0.0)
 - Legacy-мусор из /config вычищен (v2.0.0)
+- Проактивная проверка OWA-сессии при старте (v2.1.0)
+- Реактивный re-login на HTTP 440 в рантайме (v2.1.0)
 
 ### Приоритет 1 — Работа с почтой (ЗАКРЫТО в v1.1.0)
 
