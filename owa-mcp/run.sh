@@ -1,5 +1,6 @@
 #!/usr/bin/with-contenv bashio
-set -e
+set +e
+trap 'echo "[FATAL] run.sh died at line $LINENO (exit=$?)" >&2' ERR
 
 bashio::log.info "Starting OWA Exchange MCP add-on..."
 
