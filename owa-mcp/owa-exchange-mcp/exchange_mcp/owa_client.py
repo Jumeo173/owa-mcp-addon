@@ -92,11 +92,8 @@ class OWAClient:
         if not cookies:
             raise SessionExpiredError("Cookie file is empty. Call the login tool first.")
 
-        self._cookies = cookies
-        self._canary = cookies.get("X-OWA-CANARY", "")
-        self._session = requests.Session()
-        self._session.cookies.update(cookies)
-        self._loaded = True
+        cookies_str = "\n".join(f"{k}={v}" for k, v in cookies.items())
+        self.load_cookies_from_string(cookies_str)
 
     def _ensure_loaded(self) -> None:
         """Load cookies on first use."""
@@ -125,11 +122,10 @@ class OWAClient:
             raise
 
     def load_cookies_from_string(self, cookies_str: str) -> None:
-        """Load cookies from a decrypted name=value string (one per line).
+        """Load cookies with proper domain/path and a browser-like User-Agent."""
+        from requests.cookies import create_cookie
+        import urllib.parse
 
-        Used by the login tool to inject cookies directly into memory
-        without writing plaintext to disk.
-        """
         cookies: dict[str, str] = {}
         for line in cookies_str.strip().split("\n"):
             if "=" in line:
@@ -141,8 +137,27 @@ class OWAClient:
 
         self._cookies = cookies
         self._canary = cookies.get("X-OWA-CANARY", "")
+
         self._session = requests.Session()
-        self._session.cookies.update(cookies)
+        self._session.headers["User-Agent"] = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        )
+
+        parsed = urllib.parse.urlparse(self.owa_url)
+        host = parsed.hostname
+        base_path = "/owa/" if parsed.path.startswith("/owa") else "/"
+
+        for name, value in cookies.items():
+            c = create_cookie(
+                domain=host,
+                path=base_path,
+                name=name,
+                value=value,
+            )
+            self._session.cookies.set_cookie(c)
+
         self._loaded = True
 
     # ------------------------------------------------------------------
