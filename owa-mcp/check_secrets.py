@@ -68,10 +68,12 @@ if mode == "session":
                 },
             }],
         }
-        client.request("GetFolder", payload, timeout=15)
+        client.request("GetFolder", payload, timeout=10)
         sys.exit(0)
     except Exception as e:
-        print(f"session check: {type(e).__name__}: {e}", file=sys.stderr)
+        import traceback as _tb
+        print(f"session check FAILED: {type(e).__name__}: {e}", file=sys.stderr)
+        _tb.print_exc(file=sys.stderr)
         sys.exit(1)
 
 sys.exit(1)

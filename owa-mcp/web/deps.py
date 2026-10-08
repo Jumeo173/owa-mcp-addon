@@ -75,8 +75,14 @@ def run_check(mode: str, timeout: int = 25) -> dict[str, Any]:
             "stdout": r.stdout.strip(),
             "stderr": r.stderr.strip(),
         }
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "exit": -1, "error": f"timeout >{timeout}s"}
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "exit": -1,
+            "error": f"TIMEOUT >{timeout}s",
+            "stdout": (exc.stdout or b"").decode(errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or ""),
+            "stderr": (exc.stderr or b"").decode(errors="replace") if isinstance(exc.stderr, bytes) else (exc.stderr or ""),
+        }
 
 
 # ----------------------------------------------------------------------
@@ -140,7 +146,7 @@ def session_status() -> dict[str, Any]:
         "files":       files_snapshot(),
         "creds":       run_check("creds"),
         "cookies":     run_check("cookies"),
-        "session":     run_check("session", timeout=20),
+        "session":     run_check("session", timeout=60),
         "options":     _masked_options(),
     }
 

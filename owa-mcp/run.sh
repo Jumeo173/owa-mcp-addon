@@ -95,9 +95,17 @@ if [ ! -f "${COOKIES_SRC}" ]; then
 elif ! .venv/bin/python /app/owa-exchange-mcp/check_secrets.py cookies 2>/dev/null; then
     bashio::log.warning "Cookies not decryptable, running login.py"
     NEED_LOGIN=1
-elif ! .venv/bin/python /app/owa-exchange-mcp/check_secrets.py session 2>&1; then
-    bashio::log.warning "OWA session expired (HTTP 440), running login.py"
-    NEED_LOGIN=1
+else
+    SESSION_OUT=$(.venv/bin/python /app/owa-exchange-mcp/check_secrets.py session 2>&1)
+    SESSION_RC=$?
+    if [ "$SESSION_RC" != "0" ]; then
+        bashio::log.warning "check_secrets session FAILED (rc=$SESSION_RC):"
+        while IFS= read -r line; do
+            [ -n "$line" ] && bashio::log.warning "  $line"
+        done <<< "$SESSION_OUT"
+        bashio::log.warning "Running login.py..."
+        NEED_LOGIN=1
+    fi
 fi
 
 if [ "${NEED_LOGIN}" = "1" ]; then
