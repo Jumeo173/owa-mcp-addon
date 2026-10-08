@@ -18,7 +18,7 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 @app.get("/")
 async def root():
-    return RedirectResponse(url="/status")
+    return RedirectResponse(url="status")
 
 
 @app.get("/status", response_class=HTMLResponse)
