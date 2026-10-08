@@ -191,6 +191,15 @@ def login(username: str, password: str, master_password: str = None):
             cookies_str = "\n".join(
                 f"{c['name']}={c['value']}" for c in cookies
             )
+            # Save the actual User-Agent used by this browser session
+            try:
+                ua = page.evaluate("navigator.userAgent")
+                ua_file = Path(__file__).parent / "session-user-agent.txt"
+                ua_file.write_text(ua)
+                print(f"Saved User-Agent: {ua[:80]}...", flush=True)
+            except Exception as e:
+                print(f"WARN: could not capture User-Agent: {e}", flush=True)
+
             if master_password and SALT_FILE.exists():
                 salt = SALT_FILE.read_bytes()
                 key = get_key(master_password, salt)

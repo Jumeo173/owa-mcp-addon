@@ -139,11 +139,17 @@ class OWAClient:
         self._canary = cookies.get("X-OWA-CANARY", "")
 
         self._session = requests.Session()
-        self._session.headers["User-Agent"] = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        )
+        # Prefer the real User-Agent captured by login.py via Playwright
+        ua_file = Path("/app/owa-exchange-mcp/session-user-agent.txt")
+        if ua_file.is_file():
+            ua = ua_file.read_text().strip()
+        else:
+            ua = (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "HeadlessChrome/120.0.0.0 Safari/537.36"
+            )
+        self._session.headers["User-Agent"] = ua
 
         parsed = urllib.parse.urlparse(self.owa_url)
         host = parsed.hostname
@@ -204,6 +210,13 @@ class OWAClient:
             "Action": action,
             "X-OWA-CANARY": canary,
             "X-Requested-With": "XMLHttpRequest",
+            "Origin": self.owa_url,
+            "Referer": f"{self.owa_url}/owa/",
+            "Accept": "*/*",
+            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
         }
 
         try:
