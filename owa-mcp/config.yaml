@@ -1,5 +1,5 @@
 name: "OWA Exchange MCP"
-version: "2.1.0"
+version: "2.2.0"
 slug: "owa-mcp"
 description: "Digital Secretary for Exchange via MCP (SSE)"
 url: "https://github.com/Jumeo173/owa-mcp-addon"
@@ -10,6 +10,10 @@ arch:
 startup: application
 boot: auto
 init: false
+ingress: true
+ingress_port: 8099
+hassio_api: true
+hassio_role: default
 host_network: false
 ports:
   "8765/tcp": 8765

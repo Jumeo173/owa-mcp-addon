@@ -113,5 +113,14 @@ if [ "${NEED_LOGIN}" = "1" ]; then
 fi
 
 cd /app
+# Launch web UI in background (FastAPI on 0.0.0.0:8099, HA ingress proxied)
+if [ -f /app/run_web.py ]; then
+    /app/owa-exchange-mcp/.venv/bin/python /app/run_web.py > /tmp/web_ui.log 2>&1 &
+    WEB_UI_PID=$!
+    bashio::log.info "Web UI started (pid=$WEB_UI_PID) on :8099"
+else
+    bashio::log.warning "run_web.py not found, skipping web UI"
+fi
+
 bashio::log.info "Launching run_http.py..."
 exec /app/owa-exchange-mcp/.venv/bin/python -u /app/run_http.py

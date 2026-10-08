@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3"><i class="bi bi-lightning"></i> Действия</h3>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h5>Force re-login</h5>
+    <p class="text-muted small">Запустить <code>login.py</code> через browserless.
+      Занимает ~30 сек. Cookies обновятся и скопируются в <code>/data/</code>.</p>
+    <button class="btn btn-warning" id="btn-relogin" onclick="forceRelogin()">
+      <i class="bi bi-arrow-repeat"></i> Обновить cookies
+    </button>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header">Прогресс</div>
+  <div class="card-body p-0">
+    <pre id="action-log" class="logbox mb-0">— ничего не запущено —</pre>
+  </div>
+  <div class="card-footer small" id="action-meta"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pollTimer = null;
+
+async function forceRelogin() {
+    const btn = document.getElementById('btn-relogin');
+    btn.disabled = true;
+    const r = await fetch('api/actions/re-login', {method: 'POST'});
+    const d = await r.json();
+    if (!d.ok) {
+        alert('Ошибка: ' + (d.error || 'unknown'));
+        btn.disabled = false;
+        return;
+    }
+    startPolling();
+}
+
+function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(pollOnce, 1500);
+    pollOnce();
+}
+
+async function pollOnce() {
+    const r = await fetch('api/actions/re-login/status');
+    const s = await r.json();
+    const box = document.getElementById('action-log');
+    box.textContent = (s.log || []).join('\n');
+    box.scrollTop = box.scrollHeight;
+
+    const meta = document.getElementById('action-meta');
+    if (s.running) {
+        const elapsed = (Date.now() / 1000 - s.started_at).toFixed(0);
+        meta.textContent = `⏳ выполняется… ${elapsed}s`;
+    } else {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        document.getElementById('btn-relogin').disabled = false;
+        if (s.ok === true) meta.innerHTML = `<span class="text-success">✔ OK (${s.returncode})</span>`;
+        else if (s.ok === false) meta.innerHTML = `<span class="text-danger">✘ FAIL (${s.returncode})</span>`;
+        else meta.textContent = '—';
+    }
+}
+</script>
+{% endblock %}

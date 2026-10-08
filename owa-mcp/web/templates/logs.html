@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3"><i class="bi bi-file-text"></i> Логи</h3>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-0">Строк</label>
+        <select id="flines" class="form-select form-select-sm">
+          <option>100</option><option selected>200</option><option>500</option><option>1000</option><option>2000</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-0">Уровень</label>
+        <select id="flevel" class="form-select form-select-sm">
+          <option value="">все</option>
+          <option value="INFO">INFO</option>
+          <option value="WARNING">WARNING</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="form-label small mb-0">Поиск</label>
+        <input id="fq" class="form-control form-control-sm" placeholder="подстрока…">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-primary" onclick="loadLogs()">
+          <i class="bi bi-search"></i> Показать
+        </button>
+      </div>
+      <div class="col-auto">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="auto" checked>
+          <label class="form-check-label small" for="auto">автообновление</label>
+        </div>
+      </div>
+      <div class="col-auto">
+        <a id="dl-btn" class="btn btn-sm btn-outline-secondary" href="#">
+          <i class="bi bi-download"></i> Скачать
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <pre id="logbox" class="logbox mb-0">загрузка…</pre>
+  </div>
+  <div class="card-footer small text-muted" id="logmeta"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadLogs() {
+    const lines = document.getElementById('flines').value;
+    const level = document.getElementById('flevel').value;
+    const q = document.getElementById('fq').value;
+    const params = new URLSearchParams({lines, level, q});
+
+    document.getElementById('dl-btn').href = 'api/logs/download?' + params;
+
+    const r = await fetch('api/logs?' + params);
+    const d = await r.json();
+    const box = document.getElementById('logbox');
+    if (!d.ok) {
+        box.textContent = 'ОШИБКА: ' + (d.error || 'unknown');
+        document.getElementById('logmeta').textContent = '';
+        return;
+    }
+    box.textContent = d.lines.join('\n');
+    box.scrollTop = box.scrollHeight;
+    document.getElementById('logmeta').textContent = d.count + ' строк';
+}
+
+setInterval(() => {
+    if (document.getElementById('auto').checked) loadLogs();
+}, 5000);
+
+loadLogs();
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3"><i class="bi bi-gear"></i> Конфигурация</h3>
+
+<div class="alert alert-info small">
+  Значения секретов <strong>маскированы</strong>. Изменить — только через UI аддона в HA.
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+      <tbody>
+        {% for k, v in options.items() %}
+        <tr><td><code>{{ k }}</code></td><td>{{ v }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

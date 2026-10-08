@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3><i class="bi bi-speedometer2"></i> Статус</h3>
+  <button class="btn btn-sm btn-outline-secondary" onclick="reloadStatus()">
+    <i class="bi bi-arrow-clockwise"></i> Обновить
+  </button>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-lg-3">
+    <div class="card shadow-sm h-100" id="card-creds">
+      <div class="card-body">
+        <div class="text-muted small">Credentials</div>
+        <div class="fs-5"><span id="creds-icon">⏳</span> <span id="creds-text">...</span></div>
+        <div class="small text-muted" id="creds-detail"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card shadow-sm h-100" id="card-cookies">
+      <div class="card-body">
+        <div class="text-muted small">Cookies расшифровка</div>
+        <div class="fs-5"><span id="cookies-icon">⏳</span> <span id="cookies-text">...</span></div>
+        <div class="small text-muted" id="cookies-detail"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card shadow-sm h-100" id="card-session">
+      <div class="card-body">
+        <div class="text-muted small">OWA-сессия (live)</div>
+        <div class="fs-5"><span id="session-icon">⏳</span> <span id="session-text">...</span></div>
+        <div class="small text-muted" id="session-detail"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small">Версия / Uptime</div>
+        <div class="fs-5" id="version-text">—</div>
+        <div class="small text-muted" id="uptime-text"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header"><i class="bi bi-file-earmark-lock"></i> Файлы секретов</div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-striped mb-0">
+          <thead><tr><th>Файл</th><th>Размер</th><th>MD5</th></tr></thead>
+          <tbody id="files-body">
+            <tr><td colspan="3" class="text-muted text-center">загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header"><i class="bi bi-gear"></i> Конфигурация (секреты маскированы)</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody id="opts-body">
+            <tr><td colspan="2" class="text-muted text-center">загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function reloadStatus() {
+    const r = await fetch('api/status');
+    const d = await r.json();
+    renderStatus(d);
+}
+
+function setCard(prefix, ok, text, detail) {
+    document.getElementById(prefix + '-icon').textContent = ok ? '🟢' : '🔴';
+    document.getElementById(prefix + '-text').textContent = text;
+    document.getElementById(prefix + '-detail').textContent = detail || '';
+}
+
+function renderStatus(d) {
+    // creds
+    if (d.creds && d.creds.ok) setCard('creds', true, 'OK', 'расшифровывается');
+    else setCard('creds', false, 'FAIL', (d.creds && d.creds.stderr) || 'не расшифровывается');
+
+    // cookies
+    if (d.cookies && d.cookies.ok) setCard('cookies', true, 'OK', 'расшифровывается');
+    else setCard('cookies', false, 'FAIL', (d.cookies && d.cookies.stderr) || 'не расшифровывается');
+
+    // session
+    if (d.session && d.session.ok) setCard('session', true, 'OK', 'cookies валидны на OWA');
+    else setCard('session', false, 'EXPIRED?', (d.session && d.session.stderr) || 'сервер вернул 440/ошибку');
+
+    // version / uptime
+    document.getElementById('version-text').textContent = 'v' + (d.version || '?');
+    const up = d.uptime || 0;
+    document.getElementById('uptime-text').textContent = 'uptime: ' + fmtUptime(up);
+
+    // files
+    const tb = document.getElementById('files-body');
+    tb.innerHTML = '';
+    const files = d.files || {};
+    for (const [name, info] of Object.entries(files)) {
+        if (!info.exists) continue;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><code>${name}</code><div class="small text-muted">${info.path}</div></td>
+            <td>${info.size} B</td><td><code class="small">${info.md5}</code></td>`;
+        tb.appendChild(tr);
+    }
+
+    // options
+    const ob = document.getElementById('opts-body');
+    ob.innerHTML = '';
+    for (const [k, v] of Object.entries(d.options || {})) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="small"><code>${k}</code></td><td class="small">${v}</td>`;
+        ob.appendChild(tr);
+    }
+}
+
+function fmtUptime(s) {
+    s = Math.floor(s);
+    const d = Math.floor(s / 86400); s %= 86400;
+    const h = Math.floor(s / 3600); s %= 3600;
+    const m = Math.floor(s / 60); s %= 60;
+    return (d ? d + 'd ' : '') + h + 'h ' + m + 'm ' + s + 's';
+}
+
+reloadStatus();
+setInterval(reloadStatus, 15000);
+</script>
+{% endblock %}
