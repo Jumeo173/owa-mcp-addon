@@ -26,16 +26,18 @@ async def status_page(request: Request):
     from web.routes.status import get_status_data
     data = get_status_data()
     return templates.TemplateResponse(
-        "index.html",
-        {"request": request, "page": "status", **data},
+        request=request,
+        name="index.html",
+        context={"page": "status", **data},
     )
 
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
     return templates.TemplateResponse(
-        "logs.html",
-        {"request": request, "page": "logs"},
+        request=request,
+        name="logs.html",
+        context={"page": "logs"},
     )
 
 
@@ -44,16 +46,18 @@ async def secrets_page(request: Request):
     from web.routes.status import get_status_data
     data = get_status_data()
     return templates.TemplateResponse(
-        "secrets.html",
-        {"request": request, "page": "secrets", **data},
+        request=request,
+        name="secrets.html",
+        context={"page": "secrets", **data},
     )
 
 
 @app.get("/actions", response_class=HTMLResponse)
 async def actions_page(request: Request):
     return templates.TemplateResponse(
-        "actions.html",
-        {"request": request, "page": "actions"},
+        request=request,
+        name="actions.html",
+        context={"page": "actions"},
     )
 
 
@@ -61,9 +65,9 @@ async def actions_page(request: Request):
 async def config_page(request: Request):
     from web.deps import _masked_options, read_options
     return templates.TemplateResponse(
-        "config.html",
-        {
-            "request": request,
+        request=request,
+        name="config.html",
+        context={
             "page": "config",
             "options": _masked_options(),
             "raw_keys": sorted(read_options().keys()),
