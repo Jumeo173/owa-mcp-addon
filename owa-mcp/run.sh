@@ -115,8 +115,16 @@ fi
 cd /app
 # Launch web UI in background (FastAPI on 0.0.0.0:8099, HA ingress proxied)
 if [ -f /app/run_web.py ]; then
-    /app/owa-exchange-mcp/.venv/bin/python -u /app/run_web.py 2>&1 | sed 's/^/[web] /' &
+    PYTHONUNBUFFERED=1 /app/owa-exchange-mcp/.venv/bin/python /app/run_web.py &
     WEB_UI_PID=$!
+    sleep 3
+    if ! kill -0 $WEB_UI_PID 2>/dev/null; then
+        bashio::log.error "Web UI process died immediately (pid=$WEB_UI_PID)"
+    else
+        bashio::log.info "Web UI process alive (pid=$WEB_UI_PID)"
+        code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:8099/status || echo 000)
+        bashio::log.info "Web UI self-test HTTP $code"
+    fi
     bashio::log.info "Web UI started (pid=$WEB_UI_PID) on :8099"
 else
     bashio::log.warning "run_web.py not found, skipping web UI"
