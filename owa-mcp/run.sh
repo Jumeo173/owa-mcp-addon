@@ -100,9 +100,14 @@ else
     SESSION_RC=$?
     if [ "$SESSION_RC" != "0" ]; then
         bashio::log.warning "check_secrets session FAILED (rc=$SESSION_RC):"
-        while IFS= read -r line; do
-            [ -n "$line" ] && bashio::log.warning "  $line"
-        done <<< "$SESSION_OUT"
+        if [ -n "$SESSION_OUT" ]; then
+            while IFS= read -r line; do
+                [ -z "$line" ] && continue
+                bashio::log.warning "  $line"
+            done <<< "$SESSION_OUT" || true
+        else
+            bashio::log.warning "  (no output)"
+        fi
         bashio::log.warning "Running login.py..."
         NEED_LOGIN=1
     fi
